@@ -2,13 +2,17 @@
 // The .NET Foundation licenses this file to you under the MIT license.
 
 using Microsoft.DotNet.Cli.Utils;
+using Microsoft.Extensions.DependencyModel;
 
 namespace Microsoft.NET.Build.Tests
 {
-    public class GivenThatWeWantToCopyLocalDependencies : SdkTest
+    public class GivenThatWeWantToCopyLocalDependencies : SdkTest, IClassFixture<NupkgWithRuntimeAssetsFixture>
     {
-        public GivenThatWeWantToCopyLocalDependencies(ITestOutputHelper log) : base(log)
+        private readonly NupkgWithRuntimeAssetsFixture _fixture;
+
+        public GivenThatWeWantToCopyLocalDependencies(NupkgWithRuntimeAssetsFixture fixture, ITestOutputHelper log) : base(log)
         {
+            _fixture = fixture;
         }
 
         [Fact]
@@ -348,6 +352,62 @@ namespace Microsoft.NET.Build.Tests
             outputDirectory.Should().NotHaveFiles(new[] {
                 $"apphost{Constants.ExeSuffix}",
             });
+        }
+
+        [Theory]
+        [InlineData("net9.0", true, false)]     // < 10.0 should always use the package path, not destination path
+        [InlineData("net9.0", false, false)]    // < 10.0 should always use the package path, not destination path
+        [InlineData(ToolsetInfo.CurrentTargetFramework, true, true)]    // >= 10.0 should use the destination path if CopyLocalLockFileAssemblies is true
+        [InlineData(ToolsetInfo.CurrentTargetFramework, false, false)]  // >= 10.0 should not use the destination path if CopyLocalLockFileAssemblies is false
+        public void It_uses_destination_path_for_package_dependencies(string targetFramework, bool copyLocalLockFileAssemblies, bool shouldUseDestinationPath)
+        {
+            TestProject testProject = new()
+            {
+                Name = "TestProjWithPackageDependencies",
+                TargetFrameworks = targetFramework,
+                IsExe = true
+            };
+            testProject.AdditionalProperties["CopyLocalLockFileAssemblies"] = copyLocalLockFileAssemblies.ToString();
+
+            // Add reference to a package with runtime assets (assemblies, native libraries, and resources).
+            string packagePath = _fixture.CreatePackage(targetFramework, _testAssetsManager);
+            var package = new TestPackageReference(NupkgWithRuntimeAssetsFixture.PackageId, "1.0.0", packagePath);
+            testProject.PackageReferences.Add(package);
+            testProject.AdditionalProperties["RestoreAdditionalProjectSources"] = Path.GetDirectoryName(package.NupkgPath)!;
+            testProject.AdditionalProperties["RestorePackagesPath"] = @"$(MSBuildProjectDirectory)\packages";
+
+            var buildCommand = new BuildCommand(_testAssetsManager.CreateTestProject(testProject, identifier: targetFramework));
+            buildCommand.Execute().Should().Pass();
+
+            string depsFile = Path.Combine(buildCommand.GetOutputDirectory(testProject.TargetFrameworks).FullName, $"{testProject.Name}.deps.json");
+            using (FileStream stream= File.OpenRead(depsFile))
+            {
+                DependencyContext dependencyContext = new DependencyContextJsonReader().Read(stream);
+                RuntimeLibrary? lib = dependencyContext.RuntimeLibraries.FirstOrDefault(lib => lib.Name == package.ID);
+                Assert.NotNull(lib);
+
+                // Validate package assets are in the deps file with the expected relative path (destination or package path)
+                (string, string)[] expectedAssemblyPaths = NupkgWithRuntimeAssetsFixture.AssemblyPaths(targetFramework);
+                foreach (var (PackagePath, DestinationPath) in expectedAssemblyPaths)
+                {
+                    string expectedPath = shouldUseDestinationPath ? DestinationPath : PackagePath;
+                    lib.RuntimeAssemblyGroups.Should().Contain(g => g.RuntimeFiles.Any(f => f.Path == expectedPath));
+                }
+
+                (string, string)[] expectedNativeLibraryPaths = NupkgWithRuntimeAssetsFixture.NativeLibraryPaths;
+                foreach (var (PackagePath, DestinationPath) in expectedNativeLibraryPaths)
+                {
+                    string expectedPath = shouldUseDestinationPath ? DestinationPath : PackagePath;
+                    lib.NativeLibraryGroups.Should().Contain(g => g.RuntimeFiles.Any(f => f.Path == expectedPath));
+                }
+
+                (string, string)[] expectedResourcePaths = NupkgWithRuntimeAssetsFixture.ResourcePaths(targetFramework);
+                foreach (var (PackagePath, DestinationPath) in expectedResourcePaths)
+                {
+                    string expectedPath = shouldUseDestinationPath ? DestinationPath : PackagePath;
+                    lib.ResourceAssemblies.Should().Contain(a => a.Path == expectedPath);
+                }
+            }
         }
     }
 }

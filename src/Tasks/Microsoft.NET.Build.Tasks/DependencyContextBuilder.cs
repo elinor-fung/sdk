@@ -23,6 +23,7 @@ namespace Microsoft.NET.Build.Tasks
         private IEnumerable<ReferenceInfo> _dependencyReferences;
         private Dictionary<string, List<ReferenceInfo>> _compileReferences;
         private Dictionary<string, List<ResolvedFile>> _resolvedNuGetFiles;
+        private bool _useDestinationPathForResolvedNuGetFiles = true;
         private Dictionary<string, SingleProjectInfo> _referenceProjectInfos;
         private Dictionary<string, List<RuntimePackAssetInfo>> _runtimePackAssets;
         private CompilationOptions _compilationOptions;
@@ -201,6 +202,12 @@ namespace Microsoft.NET.Build.Tasks
             return this;
         }
 
+        public DependencyContextBuilder WithUseDestinationPathForResolvedNuGetFiles(bool useDestinationPathForResolvedNuGetFiles)
+        {
+            _useDestinationPathForResolvedNuGetFiles = useDestinationPathForResolvedNuGetFiles;
+            return this;
+        }
+
         public DependencyContextBuilder WithReferenceProjectInfos(Dictionary<string, SingleProjectInfo> referenceProjectInfos)
         {
             _referenceProjectInfos = referenceProjectInfos;
@@ -317,7 +324,7 @@ namespace Microsoft.NET.Build.Tasks
              * 1. If runtimeAssemblyGroups, nativeLibraryGroups, dependencies, and resourceAssemblies are all empty, remove this runtimeLibrary as well as any dependencies on it.
              * 2. Add all runtimeLibraries to a list of to-be-processed libraries called libraryCandidatesForRemoval
              * 3. libraryCandidatesForRemoval.Pop() --> if there are no runtimeAssemblyGroups, nativeLibraryGroups, or resourceAssemblies, and either dependencies is empty or all
-             *      dependencies have something else that depends on them, remove it (and from libraryCandidatesForRemoval), adding everything that depends on this to 
+             *      dependencies have something else that depends on them, remove it (and from libraryCandidatesForRemoval), adding everything that depends on this to
              *      libraryCandidatesForRemoval if it isn't already there
              * Repeat 3 until libraryCandidatesForRemoval is empty
              */
@@ -483,8 +490,8 @@ namespace Microsoft.NET.Build.Tasks
                 runtimeSignature: string.Empty,
                 _isPortable);
 
-            // Compute the runtime fallback graph 
-            // 
+            // Compute the runtime fallback graph
+            //
             // If the input RuntimeGraph is empty, or we're not compiling
             // for a specific RID, then an runtime fallback graph is empty
             //
@@ -674,7 +681,7 @@ namespace Microsoft.NET.Build.Tasks
                     var resourceFiles = resolvedNuGetFiles.Where(f => f.Asset == AssetType.Resources &&
                                                                 !f.IsRuntimeTarget);
 
-                    resourceAssemblies.AddRange(resourceFiles.Select(f => new ResourceAssembly(f.PathInPackage, f.Culture)));
+                    resourceAssemblies.AddRange(resourceFiles.Select(f => new ResourceAssembly(GetRelativePath(f), f.Culture)));
 
                     var runtimeTargets = resolvedNuGetFiles.Where(f => f.IsRuntimeTarget)
                                                                 .GroupBy(f => f.RuntimeIdentifier);
@@ -811,13 +818,16 @@ namespace Microsoft.NET.Build.Tasks
             }
         }
 
+        private string GetRelativePath(ResolvedFile resolvedFile)
+        {
+            return _useDestinationPathForResolvedNuGetFiles
+                ? resolvedFile.DestinationSubPath
+                : resolvedFile.PathInPackage ?? resolvedFile.DestinationSubPath;
+        }
+
         private RuntimeFile CreateRuntimeFile(ResolvedFile resolvedFile)
         {
-            string relativePath = resolvedFile.PathInPackage;
-            if (string.IsNullOrEmpty(relativePath))
-            {
-                relativePath = resolvedFile.DestinationSubPath;
-            }
+            string relativePath = GetRelativePath(resolvedFile);
             return CreateRuntimeFile(relativePath, resolvedFile.SourcePath);
         }
 

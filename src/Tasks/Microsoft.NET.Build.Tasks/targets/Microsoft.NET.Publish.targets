@@ -1256,6 +1256,7 @@ Copyright (c) .NET Foundation. All rights reserved.
                       RuntimeStorePackages="@(RuntimeStorePackages)"
                       CompileReferences="@(ResolvedCompileFileDefinitions)"
                       ResolvedNuGetFiles="@(_ResolvedNuGetFilesForPublish)"
+                      UseDestinationPathForResolvedNuGetFiles="$(_UseDestinationPathForResolvedNuGetFiles)"
                       ResolvedRuntimeTargetsFiles="@(RuntimeTargetsCopyLocalItems)"
                       UserRuntimeAssemblies="@(UserRuntimeAssembly)"
                       IsSelfContained="$(SelfContained)"

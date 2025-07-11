@@ -89,6 +89,14 @@ Copyright (c) .NET Foundation. All rights reserved.
     <ProjectRuntimeConfigDevFilePath Condition="'$(ProjectRuntimeConfigDevFilePath)' == '' and $(GenerateRuntimeConfigDevFile) == 'true'">$(TargetDir)$(AssemblyName).runtimeconfig.dev.json</ProjectRuntimeConfigDevFilePath>
     <IncludeMainProjectInDepsFile Condition=" '$(IncludeMainProjectInDepsFile)' == '' ">true</IncludeMainProjectInDepsFile>
     <TrimDepsJsonLibrariesWithoutAssets Condition=" '$(TrimDepsJsonLibrariesWithoutAssets)' == '' ">true</TrimDepsJsonLibrariesWithoutAssets>
+
+    <!-- For 10.0 and above, if resolved files are copied to the destination, use the destination path
+         (instead of the package path) as the relative path for resolved NuGet packages-->
+    <_UseDestinationPathForResolvedNuGetFiles
+      Condition="'$(_UseDestinationPathForResolvedNuGetFiles)' == ''
+                 and '$(CopyLocalLockFileAssemblies)' == 'true'
+                 and $([MSBuild]::VersionGreaterThanOrEquals($(TargetFrameworkVersion), '10.0'))">true</_UseDestinationPathForResolvedNuGetFiles>
+    <_UseDestinationPathForResolvedNuGetFiles Condition="'$(_UseDestinationPathForResolvedNuGetFiles)' == ''">false</_UseDestinationPathForResolvedNuGetFiles>
   </PropertyGroup>
 
   <Import Project="Microsoft.NET.Sdk.Shared.targets" />
@@ -323,6 +331,7 @@ Copyright (c) .NET Foundation. All rights reserved.
                       CompilerOptions="@(DependencyFileCompilerOptions)"
                       CompileReferences="@(ResolvedCompileFileDefinitions)"
                       ResolvedNuGetFiles="@(NativeCopyLocalItems);@(ResourceCopyLocalItems);@(RuntimeCopyLocalItems)"
+                      UseDestinationPathForResolvedNuGetFiles="$(_UseDestinationPathForResolvedNuGetFiles)"
                       UserRuntimeAssemblies="@(UserRuntimeAssembly)"
                       ResolvedRuntimeTargetsFiles="@(RuntimeTargetsCopyLocalItems)"
                       IsSelfContained="$(SelfContained)"

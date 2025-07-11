@@ -78,6 +78,8 @@ namespace Microsoft.NET.Build.Tasks
         [Required]
         public ITaskItem[] ResolvedNuGetFiles { get; set; }
 
+        public bool UseDestinationPathForResolvedNuGetFiles { get; set; }
+
         // NuGet runtime assets for runtimes* directory
         [Required]
         public ITaskItem[] ResolvedRuntimeTargetsFiles { get; set; }
@@ -249,7 +251,9 @@ namespace Microsoft.NET.Build.Tasks
 
             var resolvedNuGetFiles = ResolvedNuGetFiles.Select(f => new ResolvedFile(f, false))
                                 .Concat(ResolvedRuntimeTargetsFiles.Select(f => new ResolvedFile(f, true)));
-            builder = builder.WithResolvedNuGetFiles(resolvedNuGetFiles);
+            builder = builder
+                .WithResolvedNuGetFiles(resolvedNuGetFiles)
+                .WithUseDestinationPathForResolvedNuGetFiles(UseDestinationPathForResolvedNuGetFiles);
 
             DependencyContext dependencyContext = builder.Build(UserRuntimeAssemblies);
 

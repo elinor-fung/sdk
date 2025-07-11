@@ -51,6 +51,8 @@ Copyright (c) .NET Foundation. All rights reserved.
       Instead, we rely on SetAppPaths in runtimeconfig to allow loading of
       non-NuGet assets from shadow copied app base directory. This further
       allows loading of designer dll(s) that are not seen by the build.
+      The designer explicitly does not shadow copy resolved nuget package assets,
+      so we do not use the destination path in the deps file.
     -->
     <GenerateDepsFile
       AssemblyName="_"
