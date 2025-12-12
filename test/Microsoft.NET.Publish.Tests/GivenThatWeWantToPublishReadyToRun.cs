@@ -233,6 +233,41 @@ namespace Microsoft.NET.Publish.Tests
         }
 
         [RequiresMSBuildVersionTheory("17.0.0.32901")]
+        [InlineData(ToolsetInfo.CurrentTargetFramework)]
+        public void It_uses_specified_container_format(string targetFramework)
+        {
+            var projectName = "ContainerFormatTest";
+
+            var testProject = CreateTestProjectForR2RTesting(
+                targetFramework,
+                projectName,
+                "ClassLib");
+
+            testProject.AdditionalProperties["PublishReadyToRun"] = "True";
+            testProject.AdditionalProperties["PublishReadyToRunComposite"] = "True";
+            testProject.SelfContained = "True";
+
+            // Set container format based on platform
+            string format = OperatingSystem.IsMacOS() ? "macho" : "pe";
+            testProject.AdditionalProperties["PublishReadyToRunContainerFormat"] = format;
+
+            var testProjectInstance = _testAssetsManager.CreateTestProject(testProject, identifier: targetFramework);
+
+            var publishCommand = new PublishCommand(testProjectInstance);
+            publishCommand.Execute().Should().Pass();
+
+            DirectoryInfo publishDirectory = publishCommand.GetOutputDirectory(
+                targetFramework,
+                "Debug",
+                testProject.RuntimeIdentifier);
+
+            var mainProjectDll = Path.Combine(publishDirectory.FullName, $"{projectName}.dll");
+            DoesImageHaveR2RInfo(mainProjectDll).Should().BeTrue();
+            string compositeImageName = OperatingSystem.IsMacOS() ? $"{projectName}.r2r.dylib" : $"{projectName}.r2r.dll";
+            Assert.True(File.Exists(Path.Combine(publishDirectory.FullName, compositeImageName)));
+        }
+
+        [RequiresMSBuildVersionTheory("17.0.0.32901")]
         [InlineData("net6.0")]
         [InlineData(ToolsetInfo.CurrentTargetFramework)]
         public void It_supports_libraries_when_using_crossgen2(string targetFramework)
