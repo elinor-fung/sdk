@@ -211,12 +211,7 @@ namespace Microsoft.NET.Publish.Tests
         [InlineData(ToolsetInfo.CurrentTargetFramework)]
         void It_can_publish_readytorun_using_crossgen2(string targetFramework)
         {
-            // In .NET 5 Crossgen2 supported Linux/Windows x64 only
-            if (targetFramework == "net5.0" &&
-                (RuntimeInformation.IsOSPlatform(OSPlatform.OSX) || RuntimeInformation.OSArchitecture != Architecture.X64))
-                return;
-
-            TestProjectPublishing_Internal("Crossgen2TestApp", targetFramework, isSelfContained: true, emitNativeSymbols: true, useCrossgen2: true, composite: false, identifier: targetFramework);
+            TestProjectPublishing_Internal("Crossgen2TestApp", targetFramework, isSelfContained: true, emitNativeSymbols: true, composite: false, identifier: targetFramework);
         }
 
         [RequiresMSBuildVersionTheory("17.0.0.32901")]
@@ -224,12 +219,7 @@ namespace Microsoft.NET.Publish.Tests
         [InlineData(ToolsetInfo.CurrentTargetFramework)]
         void It_can_publish_readytorun_using_crossgen2_composite_mode(string targetFramework)
         {
-            // In .NET 5 Crossgen2 supported Linux/Windows x64 only
-            if (targetFramework == "net5.0" &&
-                (RuntimeInformation.IsOSPlatform(OSPlatform.OSX) || RuntimeInformation.OSArchitecture != Architecture.X64))
-                return;
-
-            TestProjectPublishing_Internal("Crossgen2TestApp", targetFramework, isSelfContained: true, emitNativeSymbols: false, useCrossgen2: true, composite: true, identifier: targetFramework);
+            TestProjectPublishing_Internal("Crossgen2TestApp", targetFramework, isSelfContained: true, emitNativeSymbols: false, composite: true, identifier: targetFramework);
         }
 
         [RequiresMSBuildVersionTheory("17.0.0.32901")]
@@ -272,11 +262,6 @@ namespace Microsoft.NET.Publish.Tests
         [InlineData(ToolsetInfo.CurrentTargetFramework)]
         public void It_supports_libraries_when_using_crossgen2(string targetFramework)
         {
-            // In .NET 5 Crossgen2 supported Linux/Windows x64 only
-            if (targetFramework == "net5.0" &&
-                (RuntimeInformation.IsOSPlatform(OSPlatform.OSX) || RuntimeInformation.OSArchitecture != Architecture.X64))
-                return;
-
             var projectName = "FrameworkDependentUsingCrossgen2";
 
             var testProject = CreateTestProjectForR2RTesting(
@@ -285,7 +270,6 @@ namespace Microsoft.NET.Publish.Tests
                 "ClassLib");
 
             testProject.AdditionalProperties["PublishReadyToRun"] = "True";
-            testProject.AdditionalProperties["PublishReadyToRunUseCrossgen2"] = "True";
             testProject.SelfContained = "False";
 
             var testProjectInstance = _testAssetsManager.CreateTestProject(testProject, targetFramework);
@@ -336,7 +320,7 @@ namespace Microsoft.NET.Publish.Tests
                 return;
             }
 
-            TestProjectPublishing_Internal(projectName, targetFramework, isSelfContained: selfcontained == "selfcontained", emitNativeSymbols: true, useCrossgen2: true, composite: composite == "composite", identifier: targetFramework, runtimeIdentifier: runtimeIdentifier);
+            TestProjectPublishing_Internal(projectName, targetFramework, isSelfContained: selfcontained == "selfcontained", emitNativeSymbols: true, composite: composite == "composite", identifier: targetFramework, runtimeIdentifier: runtimeIdentifier);
         }
 
         private enum TargetOSEnum
@@ -391,7 +375,6 @@ namespace Microsoft.NET.Publish.Tests
             bool makeExeProject = true,
             bool isSelfContained = true,
             bool emitNativeSymbols = false,
-            bool useCrossgen2 = false,
             bool composite = true,
             [CallerMemberName] string callingMethod = "",
             string identifier = null,
@@ -406,7 +389,6 @@ namespace Microsoft.NET.Publish.Tests
 
             testProject.AdditionalProperties["PublishReadyToRun"] = "True";
             testProject.AdditionalProperties["PublishReadyToRunEmitSymbols"] = emitNativeSymbols ? "True" : "False";
-            testProject.AdditionalProperties["PublishReadyToRunUseCrossgen2"] = useCrossgen2 ? "True" : "False";
             testProject.AdditionalProperties["PublishReadyToRunComposite"] = composite ? "True" : "False";
             testProject.SelfContained = isSelfContained ? "True" : "False";
 
